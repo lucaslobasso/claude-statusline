@@ -64,3 +64,20 @@ test('pickWindow: newest window wins, then highest percentage', () => {
   assert.equal(pickWindow(old, null, t), old)
   assert.equal(pickWindow(old, { used_percentage: 20, resets_at: t - 1 }, t), old)
 })
+
+test('outside a repo the branch segment and its separator are hidden', () => {
+  const out = strip(line({}))
+  assert.doesNotMatch(out, /no git/)
+  assert.doesNotMatch(out, /\|\s*$/)
+  assert.match(out, /12\.0%/)
+})
+
+test('effort shows as arrows, hidden when unknown', () => {
+  const eff = level => strip(main({ ...base, effort: { level } }))
+  assert.match(eff('low'), /↓/)
+  assert.match(eff('medium'), /–/)
+  assert.match(eff('high'), /↑/)
+  assert.match(eff('max'), /↑↑↑/)
+  assert.doesNotMatch(eff('medium'), /medium/)
+  assert.doesNotMatch(strip(main({ ...base, effort: undefined, transcript_path: '/nonexistent' })), /default/)
+})

@@ -73,7 +73,8 @@ export const stepFor = percent => STEPS.find(s => percent >= s.from)
 
 const configDir = () => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 
-const KNOWN_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
+// Effort shown as arrows. An unknown level shows as text with a "?", no level at all hides it.
+const EFFORT_ARROWS = { low: '↓', medium: '–', high: '↑', xhigh: '↑↑', max: '↑↑↑' }
 
 const effortOf = input => {
   let level = typeof input.effort?.level === 'string' ? input.effort.level.toLowerCase() : undefined
@@ -93,8 +94,8 @@ const effortOf = input => {
       if (typeof saved === 'string') level = saved.toLowerCase()
     } catch {}
   }
-  if (!level) return 'default'
-  return KNOWN_EFFORT.has(level) ? level : /^[a-z0-9-]{2,20}$/.test(level) ? `${level}?` : 'default'
+  if (!level || level === 'default') return undefined
+  return EFFORT_ARROWS[level] ?? (/^[a-z0-9-]{2,20}$/.test(level) ? `${level}?` : undefined)
 }
 
 const contextOf = input => {
@@ -110,9 +111,9 @@ const contextOf = input => {
 const branchOf = input => {
   const cwd = input.cwd || input.workspace?.current_dir || input.workspace?.project_dir || process.cwd()
   try {
-    if (git(['rev-parse', '--is-inside-work-tree'], cwd) !== 'true') return '⎇ no git'
+    if (git(['rev-parse', '--is-inside-work-tree'], cwd) !== 'true') return undefined
   } catch {
-    return '⎇ no git'
+    return undefined // not a repo: the segment and its separator disappear
   }
   try {
     return git(['symbolic-ref', 'HEAD'], cwd).replace(/^refs\/heads\//, '')
