@@ -244,8 +244,13 @@ const truncate = (line, max) => {
 
 export const main = (input, snapshot = {}) => {
   const limits = limitsOf(input, snapshot)
-  const left = render(LEFT, input, limits)
-  const right = render(RIGHT, input, limits)
+  // No padding space at the outer edges of the line, only between widgets.
+  const trimStart = s => s.replace(/^\x1b\[0m /, `${ESC}0m`)
+  const trimEnd = s => s.replace(/ \x1b\[0m$/, `${ESC}0m`)
+  let left = trimStart(render(LEFT, input, limits))
+  let right = trimEnd(render(RIGHT, input, limits))
+  if (!right) left = trimEnd(left)
+  if (!left) right = trimStart(right)
   const width = Number(process.env.CCSTATUSLINE_WIDTH || process.env.COLUMNS) || 0
   let line
   if (!right) {

@@ -81,3 +81,13 @@ test('effort shows as arrows, hidden when unknown', () => {
   assert.doesNotMatch(eff('medium'), /medium/)
   assert.doesNotMatch(strip(main({ ...base, effort: undefined, transcript_path: '/nonexistent' })), /default/)
 })
+
+test('no padding space at the outer edges', () => {
+  const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '')
+  const both = plain(line({ five_hour: win(80, 3600) }))
+  assert.match(both, /^Opus/)
+  assert.match(both, /\d(hr|m|d)$/)
+  const leftOnly = plain(line({}))
+  assert.match(leftOnly, /^Opus/)
+  assert.match(leftOnly, /%$/)
+})
