@@ -29,9 +29,9 @@ export const flagsFor = (options: Options): string[] => {
   num('usageFrom', 'usage-from', 50)
   num('orangeFrom', 'orange-from', 75)
   num('redFrom', 'red-from', 90)
-  for (const key of ['effort', 'context', 'branch', 'resets']) {
-    const value = options[`show${key[0].toUpperCase()}${key.slice(1)}`]
-    if (value === false) flags.push(`--no-${key}`)
+  const toggles = { showEffort: 'effort', showContext: 'context', showBranch: 'branch', showResets: 'resets' }
+  for (const [key, flag] of Object.entries(toggles)) {
+    if (options[key] === false) flags.push(`--no-${flag}`)
   }
   return flags
 }
@@ -137,5 +137,5 @@ export const register: Register = (on, options) => {
     return {
       text: `Status line: ${enabled ? 'on' : 'off'}${flags.length ? ` · ${flags.join(' ')}` : ' · default look'}\n${USAGE}`,
     }
-  })
+  }).catch(() => ({ text: `${COMMAND}: the command failed; see claude --debug.` }))
 }
