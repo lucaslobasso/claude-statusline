@@ -6,7 +6,7 @@ A Claude Code status line with one fixed layout and no config file. One Node fil
 Opus 5.5 medium | 12.0% | main                          41.0% 3d 4hr | 82.0% 1hr 20m
 ```
 
-- **Left:** model + effort as an arrow (low `↓`, medium `–`, high `↑`, xhigh `↑↑`, max `↑↑↑`), context used,
+- **Left:** model + effort as an arrow (low `↓`, medium `–`, high `↑`, xhigh `X↑`, max `M`, auto `a`), context used,
   git branch (hidden outside a git repo).
 - **Right:** weekly and 5-hour usage with the time until each resets. Each one **only appears from 50%**
   and its percentage changes colour as it fills: white from 50%, yellow from 65%, orange from 75%, red from 90%.
