@@ -1,0 +1,60 @@
+{
+  "name": "statusline",
+  "version": "2.0.0",
+  "description": "A Claude Code status line with no config file: model, effort, context, git branch, and weekly / 5-hour usage that only appears once it gets high",
+  "author": { "name": "Lucas Lobasso", "url": "https://github.com/lucaslobasso" },
+  "homepage": "https://github.com/lucaslobasso/claude-statusline",
+  "repository": "https://github.com/lucaslobasso/claude-statusline",
+  "license": "MIT",
+  "keywords": ["statusline", "status line", "usage", "rate-limit", "context", "git"],
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Status line",
+      "description": "Keep this status line set in your settings.json. Off removes it (only if it is this one)",
+      "default": true
+    },
+    "usageFrom": {
+      "type": "number",
+      "title": "Show usage from (%)",
+      "description": "Weekly and 5-hour usage stay hidden below this percent, then show in yellow. 0 = always show",
+      "default": 50
+    },
+    "orangeFrom": {
+      "type": "number",
+      "title": "Orange from (%)",
+      "description": "Usage turns orange from this percent",
+      "default": 75
+    },
+    "redFrom": {
+      "type": "number",
+      "title": "Red from (%)",
+      "description": "Usage turns bold red from this percent",
+      "default": 90
+    },
+    "showEffort": {
+      "type": "boolean",
+      "title": "Show effort",
+      "description": "Effort level next to the model name",
+      "default": true
+    },
+    "showContext": {
+      "type": "boolean",
+      "title": "Show context",
+      "description": "Percent of the context window used",
+      "default": true
+    },
+    "showBranch": {
+      "type": "boolean",
+      "title": "Show git branch",
+      "description": "Current git branch, or 'no git'",
+      "default": true
+    },
+    "showResets": {
+      "type": "boolean",
+      "title": "Show reset timers",
+      "description": "Time until each usage window resets, next to its percent",
+      "default": true
+    }
+  }
+}

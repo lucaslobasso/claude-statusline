@@ -1,0 +1,18 @@
+{
+  "name": "claude-statusline",
+  "owner": { "name": "Lucas Lobasso", "url": "https://github.com/lucaslobasso" },
+  "metadata": {
+    "description": "A no-config Claude Code status line that shows usage only when it matters",
+    "version": "2.0.0"
+  },
+  "plugins": [
+    {
+      "name": "statusline",
+      "source": "./",
+      "description": "Model, effort, context, git branch, and usage that only appears once it gets high",
+      "version": "2.0.0",
+      "category": "ui",
+      "keywords": ["statusline", "usage", "context", "git"]
+    }
+  ]
+}
