@@ -31,7 +31,7 @@ const STEPS = [
 // Left group, then the right group. `color` undefined = terminal default.
 const LEFT = [
   { id: 'model', color: WHITE },
-  { id: 'effort' },
+  { id: 'effort', tight: true }, // one space from the model instead of two
   { id: 'sep' },
   { id: 'context' },
   { id: 'sep' },
@@ -226,7 +226,11 @@ const render = (spec, input, limits) => {
       continue
     }
     const { text, rgb, bold } = widget(w, input, limits)
-    if (text) parts.push({ sep: false, text: pad(paint(text, rgb, bold)) })
+    if (!text) continue
+    // A tight widget sits one space from the widget before it: drop that one's trailing pad.
+    const prev = parts[parts.length - 1]
+    if (w.tight && prev && !prev.sep) prev.text = prev.text.replace(/ \x1b\[0m$/, `${ESC}0m`)
+    parts.push({ sep: false, text: pad(paint(text, rgb, bold)) })
   }
   while (parts.length && parts[parts.length - 1].sep) parts.pop()
   return parts.map(p => p.text).join('')
