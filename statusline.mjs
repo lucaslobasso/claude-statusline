@@ -5,8 +5,9 @@
 //
 //   model + effort | context | git branch            weekly % + reset | session % + reset
 //
-// The two usage segments only appear once that window passes 50%, and change colour as it
-// fills: yellow from 50%, orange from 75%, bold red from 90%. Edit the constants below to
+// The two usage segments only appear once that window passes 50%. The percentage changes
+// colour as it fills (white from 50%, yellow from 65%, orange from 75%, red from 90%); the
+// reset time next to it stays in the terminal's default colour. Edit the constants below to
 // change the look.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -21,9 +22,10 @@ const SEPARATOR = [85, 87, 83]
 
 // Usage colours, highest step first. A window below the lowest `from` is hidden.
 const STEPS = [
-  { from: 90, rgb: [239, 41, 41], bold: true }, // red
+  { from: 90, rgb: [239, 41, 41] }, // red
   { from: 75, rgb: [245, 160, 60] }, // orange
-  { from: 50, rgb: [252, 233, 79] }, // yellow
+  { from: 65, rgb: [252, 233, 79] }, // yellow
+  { from: 50, rgb: WHITE },
 ]
 
 // Left group, then the right group. `color` undefined = terminal default.
@@ -71,7 +73,8 @@ export const stepFor = percent => STEPS.find(s => percent >= s.from)
 
 const configDir = () => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 
-const KNOWN_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
+// Effort shown as arrows. An unknown level shows as text with a "?", no level at all hides it.
+const EFFORT_ARROWS = { low: '↓', medium: '–', high: '↑', xhigh: '↑+', max: 'M', auto: 'a' }
 
 const effortOf = input => {
   let level = typeof input.effort?.level === 'string' ? input.effort.level.toLowerCase() : undefined
@@ -91,8 +94,8 @@ const effortOf = input => {
       if (typeof saved === 'string') level = saved.toLowerCase()
     } catch {}
   }
-  if (!level) return 'default'
-  return KNOWN_EFFORT.has(level) ? level : /^[a-z0-9-]{2,20}$/.test(level) ? `${level}?` : 'default'
+  if (!level || level === 'default') return undefined
+  return EFFORT_ARROWS[level] ?? (/^[a-z0-9-]{2,20}$/.test(level) ? `${level}?` : undefined)
 }
 
 const contextOf = input => {
@@ -108,9 +111,9 @@ const contextOf = input => {
 const branchOf = input => {
   const cwd = input.cwd || input.workspace?.current_dir || input.workspace?.project_dir || process.cwd()
   try {
-    if (git(['rev-parse', '--is-inside-work-tree'], cwd) !== 'true') return '⎇ no git'
+    if (git(['rev-parse', '--is-inside-work-tree'], cwd) !== 'true') return undefined
   } catch {
-    return '⎇ no git'
+    return undefined // not a repo: the segment and its separator disappear
   }
   try {
     return git(['symbolic-ref', 'HEAD'], cwd).replace(/^refs\/heads\//, '')
@@ -203,7 +206,7 @@ const widget = (w, input, limits) => {
     case 'sessionReset': {
       const win = limits[w.usage]
       const step = win && stepFor(win.used_percentage)
-      return step ? { text: countdown(win.resets_at), rgb: step.rgb, bold: step.bold } : {}
+      return step ? { text: countdown(win.resets_at) } : {} // default colour
     }
   }
   return {}
@@ -241,8 +244,13 @@ const truncate = (line, max) => {
 
 export const main = (input, snapshot = {}) => {
   const limits = limitsOf(input, snapshot)
-  const left = render(LEFT, input, limits)
-  const right = render(RIGHT, input, limits)
+  // No padding space at the outer edges of the line, only between widgets.
+  const trimStart = s => s.replace(/^\x1b\[0m /, `${ESC}0m`)
+  const trimEnd = s => s.replace(/ \x1b\[0m$/, `${ESC}0m`)
+  let left = trimStart(render(LEFT, input, limits))
+  let right = trimEnd(render(RIGHT, input, limits))
+  if (!right) left = trimEnd(left)
+  if (!left) right = trimStart(right)
   const width = Number(process.env.CCSTATUSLINE_WIDTH || process.env.COLUMNS) || 0
   let line
   if (!right) {
