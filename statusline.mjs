@@ -74,7 +74,7 @@ export const stepFor = percent => STEPS.find(s => percent >= s.from)
 const configDir = () => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 
 // Effort shown as arrows. An unknown level shows as text with a "?", no level at all hides it.
-const EFFORT_ARROWS = { low: '↓', medium: '–', high: '↑', xhigh: 'X↑', max: 'M', auto: 'a' }
+const EFFORT_ARROWS = { low: '↓', medium: '–', high: '↑', xhigh: '↑+', max: 'M', auto: 'a' }
 
 const effortOf = input => {
   let level = typeof input.effort?.level === 'string' ? input.effort.level.toLowerCase() : undefined

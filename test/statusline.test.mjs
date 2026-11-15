@@ -77,7 +77,7 @@ test('effort shows as arrows, hidden when unknown', () => {
   assert.match(eff('low'), /↓/)
   assert.match(eff('medium'), /–/)
   assert.match(eff('high'), /↑/)
-  assert.match(eff('xhigh'), /X↑/)
+  assert.match(eff('xhigh'), /↑\+/)
   assert.match(eff('max'), / M /)
   assert.match(eff('auto'), / a /)
   assert.doesNotMatch(eff('auto'), /auto/)
