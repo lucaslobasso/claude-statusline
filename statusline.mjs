@@ -31,7 +31,7 @@ const STEPS = [
 // Left group, then the right group. `color` undefined = terminal default.
 const LEFT = [
   { id: 'model', color: WHITE },
-  { id: 'effort' },
+  { id: 'effort', tight: true }, // one space from the model instead of two
   { id: 'sep' },
   { id: 'context' },
   { id: 'sep' },
@@ -52,7 +52,7 @@ const paint = (text, rgb, bold) => {
   const on = `${bold ? `${ESC}1m` : ''}${ESC}38;2;${rgb.join(';')}m`
   return `${on}${text}${ESC}39m${bold ? `${ESC}22m` : ''}`
 }
-const pad = text => `${ESC}0m${text}${ESC}0m`
+const pad = text => `${ESC}0m ${ESC}0m${text}${ESC}0m ${ESC}0m`
 const visibleLength = s => [...s.replace(/\x1b\[[0-9;]*m/g, '')].length
 
 const git = (args, cwd) =>
@@ -226,8 +226,11 @@ const render = (spec, input, limits) => {
       continue
     }
     const { text, rgb, bold } = widget(w, input, limits)
-    // Two widgets in a row are one space apart; a separator brings its own spaces.
-    if (text) parts.push({ sep: false, text: (parts.length && !parts[parts.length - 1].sep ? ' ' : '') + pad(paint(text, rgb, bold)) })
+    if (!text) continue
+    // A tight widget sits one space from the widget before it: drop that one's trailing pad.
+    const prev = parts[parts.length - 1]
+    if (w.tight && prev && !prev.sep) prev.text = prev.text.replace(/ \x1b\[0m$/, `${ESC}0m`)
+    parts.push({ sep: false, text: pad(paint(text, rgb, bold)) })
   }
   while (parts.length && parts[parts.length - 1].sep) parts.pop()
   return parts.map(p => p.text).join('')
@@ -249,11 +252,13 @@ const truncate = (line, max) => {
 
 export const main = (input, snapshot = {}) => {
   const limits = limitsOf(input, snapshot)
-  // One cell of margin on the left edge, none on the right (a cell is the smallest step).
-  let left = render(LEFT, input, limits)
-  let right = render(RIGHT, input, limits)
-  if (left) left = ` ${left}`
-  else if (right) right = ` ${right}`
+  // No padding space at the outer edges of the line, only between widgets.
+  const trimStart = s => s.replace(/^\x1b\[0m /, `${ESC}0m`)
+  const trimEnd = s => s.replace(/ \x1b\[0m$/, `${ESC}0m`)
+  let left = trimStart(render(LEFT, input, limits))
+  let right = trimEnd(render(RIGHT, input, limits))
+  if (!right) left = trimEnd(left)
+  if (!left) right = trimStart(right)
   const width = Number(process.env.CCSTATUSLINE_WIDTH || process.env.COLUMNS) || 0
   let line
   if (!right) {
@@ -261,7 +266,7 @@ export const main = (input, snapshot = {}) => {
   } else if (!left) {
     line = right
   } else if (width > 0) {
-    const usable = width // flush to the right edge: no reserved margin
+    const usable = width - 5
     const gap = Math.max(0, usable - visibleLength(left) - visibleLength(right))
     line = left + ' '.repeat(gap) + right
     if (visibleLength(line) > usable) line = truncate(line, usable)
