@@ -74,14 +74,14 @@ test('outside a repo the branch segment and its separator are hidden', () => {
 
 test('context is hidden below 50% with its separator, coloured by step above', () => {
   const ctx = used => main({ ...base, context_window: { used_percentage: used } })
-  assert.equal(strip(ctx(30)).trim(), 'Opus 5.5 –')
+  assert.equal(strip(ctx(30)).trim(), 'Opus 5.5  –')
   assert.doesNotMatch(strip(ctx(30)), /\|/)
-  assert.match(strip(ctx(55)), /^ Opus 5\.5 – \| 55\.0%$/)
+  assert.match(strip(ctx(55)), /^Opus 5\.5 {2}– {2}\| {2}55\.0%$/)
   assert.match(ctx(55), /38;2;238;238;236m55\.0%/)
   assert.match(ctx(70), /38;2;252;233;79m70\.0%/)
   assert.match(ctx(95), /38;2;239;41;41m95\.0%/)
   const withUsage = strip(main({ ...base, context_window: { used_percentage: 30 }, rate_limits: { five_hour: win(80, 3600) } }))
-  assert.match(withUsage, /^ Opus 5\.5 – \| 80\.0% /)
+  assert.match(withUsage, /^Opus 5\.5 {2}– {2}\| {2}80\.0% /)
 })
 
 test('effort shows as arrows, hidden when unknown', () => {
@@ -90,20 +90,20 @@ test('effort shows as arrows, hidden when unknown', () => {
   assert.match(eff('medium'), /–/)
   assert.match(eff('high'), /↑/)
   assert.match(eff('xhigh'), /↑\+/)
-  assert.match(eff('max'), /5\.5 M$/)
-  assert.match(eff('auto'), /5\.5 a$/)
+  assert.match(eff('max'), /5\.5 {2}M$/)
+  assert.match(eff('auto'), /5\.5 {2}a$/)
   assert.doesNotMatch(eff('auto'), /auto/)
   assert.doesNotMatch(eff('medium'), /medium/)
   assert.doesNotMatch(strip(main({ ...base, effort: undefined, transcript_path: '/nonexistent' })), /default/)
 })
 
-test('one cell of margin on the left, none on the right, one space between widgets', () => {
+test('no padding space at the outer edges, two spaces between widgets', () => {
   const plain = s => strip(s.replace(/\x1b\[[0-9;]*m/g, ''))
   const both = plain(line({ five_hour: win(80, 3600) }))
-  assert.match(both, /^ Opus/)
+  assert.match(both, /^Opus/)
   assert.match(both, /\d(hr|m|d)$/)
-  assert.match(both, /^ Opus 5\.5 – \| 80\.0% [\dhrmd ]+$/)
+  assert.match(both, /^Opus 5\.5 {2}– {2}\| {2}80\.0% {2}[\dhrmd ]+$/)
   const leftOnly = plain(main({ ...base, context_window: { used_percentage: 70 } }))
-  assert.match(leftOnly, /^ Opus/)
+  assert.match(leftOnly, /^Opus/)
   assert.match(leftOnly, /%$/)
 })
