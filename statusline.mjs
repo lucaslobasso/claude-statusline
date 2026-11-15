@@ -5,8 +5,10 @@
 //
 //   model + effort | context | git branch            weekly % + reset | session % + reset
 //
-// The two usage segments only appear once that window passes 50%, and change colour as it
-// fills: yellow from 50%, orange from 75%, bold red from 90%. The plugin passes its settings
+// The context % and the two usage segments only appear once they pass 50% (a hidden one takes
+// its separator with it). The percentage changes
+// colour as it fills (white from 50%, yellow from 65%, orange from 75%, red from 90%); the
+// reset time next to it stays in the terminal's default colour. The plugin passes its settings
 // as flags (--usage-from=60 --no-branch ...); with no flags you get the defaults below.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -16,16 +18,16 @@ import { fileURLToPath } from 'node:url'
 
 // ---- look: edit here ------------------------------------------------------
 const WHITE = [238, 238, 236]
-const BLUE = [114, 159, 207]
 const SEPARATOR = [85, 87, 83]
 
 const RED = [239, 41, 41]
 const ORANGE = [245, 160, 60]
 const YELLOW = [252, 233, 79]
 
-// Settings, overridable with flags. Usage below `usageFrom` is hidden.
+// Settings, overridable with flags. Context and usage below `usageFrom` are hidden.
 export const DEFAULTS = {
   usageFrom: 50,
+  yellowFrom: 65,
   orangeFrom: 75,
   redFrom: 90,
   effort: true,
@@ -51,19 +53,20 @@ export const parseFlags = argv => {
   return opts
 }
 
-// Usage colours, highest step first. A window below the lowest `from` is hidden.
+// Usage colours, highest step first. A value below `usageFrom` is hidden.
 const stepsOf = opts => [
-  { from: opts.redFrom, rgb: RED, bold: true },
+  { from: opts.redFrom, rgb: RED },
   { from: opts.orangeFrom, rgb: ORANGE },
-  { from: opts.usageFrom, rgb: YELLOW },
+  { from: opts.yellowFrom, rgb: YELLOW },
+  { from: opts.usageFrom, rgb: WHITE },
 ]
 
 // Left group, then the right group. `color` undefined = terminal default.
 const LEFT = [
   { id: 'model', color: WHITE },
-  { id: 'effort' },
+  { id: 'effort', tight: true }, // one space from the model instead of two
   { id: 'sep' },
-  { id: 'context', color: BLUE },
+  { id: 'context' },
   { id: 'sep' },
   { id: 'branch' },
 ]
@@ -104,7 +107,8 @@ export const stepFor = (percent, opts = DEFAULTS) =>
 
 const configDir = () => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 
-const KNOWN_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
+// Effort shown as arrows. An unknown level shows as text with a "?", no level at all hides it.
+const EFFORT_ARROWS = { low: '↓', medium: '–', high: '↑', xhigh: '↑+', max: 'M', auto: 'a' }
 
 const effortOf = input => {
   let level = typeof input.effort?.level === 'string' ? input.effort.level.toLowerCase() : undefined
@@ -124,26 +128,26 @@ const effortOf = input => {
       if (typeof saved === 'string') level = saved.toLowerCase()
     } catch {}
   }
-  if (!level) return 'default'
-  return KNOWN_EFFORT.has(level) ? level : /^[a-z0-9-]{2,20}$/.test(level) ? `${level}?` : 'default'
+  if (!level || level === 'default') return undefined
+  return EFFORT_ARROWS[level] ?? (/^[a-z0-9-]{2,20}$/.test(level) ? `${level}?` : undefined)
 }
 
 const contextOf = input => {
   const w = input.context_window
-  if (typeof w?.used_percentage === 'number') return pct(w.used_percentage)
+  if (typeof w?.used_percentage === 'number') return w.used_percentage
   const u = w?.current_usage
   if (u && w?.context_window_size > 0) {
     const used = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0)
-    return pct((used / w.context_window_size) * 100)
+    return (used / w.context_window_size) * 100
   }
 }
 
 const branchOf = input => {
   const cwd = input.cwd || input.workspace?.current_dir || input.workspace?.project_dir || process.cwd()
   try {
-    if (git(['rev-parse', '--is-inside-work-tree'], cwd) !== 'true') return '⎇ no git'
+    if (git(['rev-parse', '--is-inside-work-tree'], cwd) !== 'true') return undefined
   } catch {
-    return '⎇ no git'
+    return undefined // not a repo: the segment and its separator disappear
   }
   try {
     return git(['symbolic-ref', 'HEAD'], cwd).replace(/^refs\/heads\//, '')
@@ -222,8 +226,12 @@ const widget = (w, input, limits, opts) => {
     }
     case 'effort':
       return opts.effort ? { text: effortOf(input) } : {}
-    case 'context':
-      return opts.context ? { text: contextOf(input), rgb: w.color } : {}
+    case 'context': {
+      // Same rule as the usage windows: hidden below the lowest step, coloured by step.
+      const used = opts.context ? contextOf(input) : undefined
+      const step = used !== undefined && stepFor(used, opts)
+      return step ? { text: pct(used), rgb: step.rgb } : {}
+    }
     case 'branch':
       return opts.branch ? { text: branchOf(input) } : {}
     case 'weekly':
@@ -236,7 +244,7 @@ const widget = (w, input, limits, opts) => {
     case 'sessionReset': {
       const win = limits[w.usage]
       const step = opts.resets && win && stepFor(win.used_percentage, opts)
-      return step ? { text: countdown(win.resets_at), rgb: step.rgb, bold: step.bold } : {}
+      return step ? { text: countdown(win.resets_at) } : {} // default colour
     }
   }
   return {}
@@ -252,7 +260,11 @@ const render = (spec, input, limits, opts) => {
       continue
     }
     const { text, rgb, bold } = widget(w, input, limits, opts)
-    if (text) parts.push({ sep: false, text: pad(paint(text, rgb, bold)) })
+    if (!text) continue
+    // A tight widget sits one space from the widget before it: drop that one's trailing pad.
+    const prev = parts[parts.length - 1]
+    if (w.tight && prev && !prev.sep) prev.text = prev.text.replace(/ \x1b\[0m$/, `${ESC}0m`)
+    parts.push({ sep: false, text: pad(paint(text, rgb, bold)) })
   }
   while (parts.length && parts[parts.length - 1].sep) parts.pop()
   return parts.map(p => p.text).join('')
@@ -274,8 +286,13 @@ const truncate = (line, max) => {
 
 export const main = (input, snapshot = {}, opts = DEFAULTS) => {
   const limits = limitsOf(input, snapshot)
-  const left = render(LEFT, input, limits, opts)
-  const right = render(RIGHT, input, limits, opts)
+  // No padding space at the outer edges of the line, only between widgets.
+  const trimStart = s => s.replace(/^\x1b\[0m /, `${ESC}0m`)
+  const trimEnd = s => s.replace(/ \x1b\[0m$/, `${ESC}0m`)
+  let left = trimStart(render(LEFT, input, limits, opts))
+  let right = trimEnd(render(RIGHT, input, limits, opts))
+  if (!right) left = trimEnd(left)
+  if (!left) right = trimStart(right)
   const width = Number(process.env.CCSTATUSLINE_WIDTH || process.env.COLUMNS) || 0
   let line
   if (!right) {

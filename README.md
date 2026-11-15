@@ -7,10 +7,10 @@
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](#install)
 
 <p align="center">
-  <img src="docs/session.png" alt="Screenshot: a Claude Code session with the status line under the prompt box: Opus 5.5, medium, 5.0%, main on the left, 62.0% 3hr 2m in yellow on the right" width="760">
+  <img src="docs/session.png" alt="Screenshot: a Claude Code session with the status line under the prompt box: model and effort on the left, 5-hour usage and its reset time on the right" width="760">
 </p>
 
-A Claude Code status line with no config file to write. Left: model, effort, context used, git branch. Right: your weekly and 5-hour usage with the time until each resets, **shown only once it passes 50%**, in yellow, then orange, then bold red. Installed as a plugin, so setup is one command and the look is chosen in `/config`.
+A Claude Code status line with no config file to write. Left: model, effort (as an arrow), context used, git branch. Right: your weekly and 5-hour usage with the time until each resets. Context and usage **only appear once they pass 50%**, and turn white, yellow, orange, then red as they fill. Installed as a plugin, so setup is one command and the look is chosen in `/config`.
 
 > Unofficial community project, not affiliated with Anthropic.
 
@@ -46,15 +46,16 @@ Change them in `/config` under **statusline**, or at install time with `--config
 | Setting | Default | Values | What it does |
 | --- | --- | --- | --- |
 | `enabled` | `true` | true / false | Keep this status line set. Off removes it from `settings.json` |
-| `usageFrom` | `50` | 0 to 100 | Usage stays hidden below this percent, then shows in yellow. `0` = always shown |
-| `orangeFrom` | `75` | 0 to 100 | Usage turns orange from here |
-| `redFrom` | `90` | 0 to 100 | Usage turns bold red from here |
-| `showEffort` | `true` | true / false | Effort level next to the model |
+| `usageFrom` | `50` | 0 to 100 | Context and usage stay hidden below this percent, then show in white. `0` = always shown |
+| `yellowFrom` | `65` | 0 to 100 | They turn yellow from here |
+| `orangeFrom` | `75` | 0 to 100 | Orange from here |
+| `redFrom` | `90` | 0 to 100 | Red from here |
+| `showEffort` | `true` | true / false | Effort as an arrow next to the model: low `↓`, medium `–`, high `↑`, xhigh `↑+`, max `M`, auto `a` |
 | `showContext` | `true` | true / false | Percent of the context window used |
-| `showBranch` | `true` | true / false | Current git branch (or `⎇ no git`) |
+| `showBranch` | `true` | true / false | Current git branch (hidden outside a git repo) |
 | `showResets` | `true` | true / false | Time until each usage window resets |
 
-Weekly and 5-hour usage are colored on their own, each by its own percent.
+Context, weekly and 5-hour usage are colored on their own, each by its own percent. Reset times stay in the terminal's default color.
 
 | Command | What it does |
 | --- | --- |
@@ -64,16 +65,17 @@ Weekly and 5-hour usage are colored on their own, each by its own percent.
 
 ## How it looks
 
-**A real session** (top of this page): usage at 62% shows in yellow.
+**A real session** (top of this page).
 
 | Setting / usage | Status line |
 | --- | --- |
-| Below 50%: hidden | <img src="docs/usage-hidden.png" alt="Opus 5.5 high, 23.4%, main; no usage on the right" width="600"> |
-| 50–74%: yellow | <img src="docs/usage-yellow.png" alt="58.0% 1hr 20m in yellow" width="600"> |
-| 75–89%: orange (weekly still yellow) | <img src="docs/usage-orange.png" alt="weekly 55.0% yellow, 5-hour 82.0% orange" width="600"> |
-| 90%+: bold red | <img src="docs/usage-red.png" alt="weekly 91.0% and 5-hour 96.0% in red" width="600"> |
-| `usageFrom=0`: always shown | <img src="docs/usage-always.png" alt="9.0% and 18.0% in yellow" width="600"> |
-| `showEffort`, `showContext`, `showResets` off | <img src="docs/minimal.png" alt="Opus 5.5, main, 55.0%, 82.0%" width="600"> |
+| Below 50%: hidden | <img src="docs/usage-hidden.png" alt="Model, effort arrow and branch; no context or usage" width="600"> |
+| 50–64%: white | <img src="docs/usage-white.png" alt="58.0% in white" width="600"> |
+| 65–74%: yellow | <img src="docs/usage-yellow.png" alt="5-hour 70.0% in yellow, weekly 55.0% white" width="600"> |
+| 75–89%: orange | <img src="docs/usage-orange.png" alt="5-hour 82.0% orange, context 66.0% yellow" width="600"> |
+| 90%+: red | <img src="docs/usage-red.png" alt="weekly 91.0% and 5-hour 96.0% in red" width="600"> |
+| `usageFrom=0`: always shown | <img src="docs/usage-always.png" alt="Context, weekly and 5-hour all shown at low values" width="600"> |
+| `showEffort`, `showContext`, `showResets` off | <img src="docs/minimal.png" alt="Model, branch and the usage percentages only" width="600"> |
 
 <sub>The top picture is a real Claude Code session captured offscreen. The rows are the real `statusline.mjs` fed made-up usage numbers (`docs/demo.mjs`), so every step can be shown.</sub>
 
@@ -96,7 +98,7 @@ Claude Code runs the script every few seconds with the session's status as JSON 
 
 - **No status line.** Start a new session, then run `/claude-statusline status`. A notice about "another status line" means your `settings.json` already had one; remove it and run `/claude-statusline on`.
 - **"node" is not recognized / an empty bar.** Install Node.js 18+ and make sure `node` runs in a new terminal.
-- **No usage on the right.** It is hidden below `usageFrom` (50% by default). Set `usageFrom` to `0` to always show it. With API billing there are no usage windows.
+- **No context or usage shown.** They are hidden below `usageFrom` (50% by default). Set `usageFrom` to `0` to always show it. With API billing there are no usage windows.
 - **`claude agents` (agent view) shows no status line.** Agent view doesn't run status lines or plugin UI, so usage can't be shown there. [Claude Taskbar](https://github.com/lucaslobasso/claude-taskbar) shows it on the Windows taskbar instead.
 - **Coming from the old `install.ps1` version.** Install the plugin; it takes over the old entry. You can delete `~/.claude/statusline/statusline.mjs` afterwards (keep `usage.json`).
 

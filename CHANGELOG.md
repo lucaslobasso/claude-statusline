@@ -8,7 +8,7 @@ All notable changes to this project. The format follows [Keep a Changelog](https
 - **Now a Claude Code plugin.** Install with `/plugin install statusline --marketplace lucaslobasso/claude-statusline`; it works on Windows, macOS and Linux. The plugin keeps the `statusLine` entry in `settings.json` up to date, editing only that entry, and takes over the entry the old `install.ps1` wrote (and boxed-messages 1.x's built-in one).
 
 ### Added
-- Settings in `/config`: `enabled`, `usageFrom`, `orangeFrom`, `redFrom`, `showEffort`, `showContext`, `showBranch`, `showResets`. They reach the script as flags (`--usage-from=60 --no-branch`); with no flags it looks exactly as before.
+- Settings in `/config`: `enabled`, `usageFrom`, `yellowFrom`, `orangeFrom`, `redFrom`, `showEffort`, `showContext`, `showBranch`, `showResets`. They reach the script as flags (`--usage-from=60 --no-branch`); with no flags it looks exactly as before.
 - `/claude-statusline on | off | status`.
 - README in the shared layout of the set, with screenshots of every usage step and setting; CI, issue template, CLAUDE.md.
 

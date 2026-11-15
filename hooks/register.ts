@@ -27,6 +27,7 @@ export const flagsFor = (options: Options): string[] => {
     if (options[key] !== undefined && options[key] !== '' && Number.isFinite(n) && n !== def) flags.push(`--${flag}=${n}`)
   }
   num('usageFrom', 'usage-from', 50)
+  num('yellowFrom', 'yellow-from', 65)
   num('orangeFrom', 'orange-from', 75)
   num('redFrom', 'red-from', 90)
   const toggles = { showEffort: 'effort', showContext: 'context', showBranch: 'branch', showResets: 'resets' }

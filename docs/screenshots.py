@@ -22,14 +22,15 @@ CAPTURE_REF = 'main'
 DOCS = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(DOCS)
 
-# file name -> demo.mjs arguments: 5-hour %, weekly %, then statusline flags
+# file name -> demo.mjs arguments: 5-hour %, weekly %, context %, then statusline flags
 DEMOS = {
-    'usage-hidden.png': ['31', '22'],
-    'usage-yellow.png': ['58', '41'],
-    'usage-orange.png': ['82', '55'],
-    'usage-red.png': ['96', '91'],
-    'usage-always.png': ['18', '9', '--usage-from=0'],
-    'minimal.png': ['82', '55', '--no-effort', '--no-context', '--no-resets'],
+    'usage-hidden.png': ['31', '22', '23'],
+    'usage-white.png': ['58', '41', '30'],
+    'usage-yellow.png': ['70', '55', '40'],
+    'usage-orange.png': ['82', '55', '66'],
+    'usage-red.png': ['96', '91', '92'],
+    'usage-always.png': ['18', '9', '12', '--usage-from=0'],
+    'minimal.png': ['82', '55', '66', '--no-effort', '--no-context', '--no-resets'],
 }
 
 
