@@ -5,7 +5,8 @@
 //
 //   model + effort | context | git branch            weekly % + reset | session % + reset
 //
-// The two usage segments only appear once that window passes 50%. The percentage changes
+// The context % and the two usage segments only appear once they pass 50% (a hidden one takes
+// its separator with it). The percentage changes
 // colour as it fills (white from 50%, yellow from 65%, orange from 75%, red from 90%); the
 // reset time next to it stays in the terminal's default colour. Edit the constants below to
 // change the look.
@@ -17,7 +18,6 @@ import { fileURLToPath } from 'node:url'
 
 // ---- look: edit here ------------------------------------------------------
 const WHITE = [238, 238, 236]
-const BLUE = [114, 159, 207]
 const SEPARATOR = [85, 87, 83]
 
 // Usage colours, highest step first. A window below the lowest `from` is hidden.
@@ -33,7 +33,7 @@ const LEFT = [
   { id: 'model', color: WHITE },
   { id: 'effort' },
   { id: 'sep' },
-  { id: 'context', color: BLUE },
+  { id: 'context' },
   { id: 'sep' },
   { id: 'branch' },
 ]
@@ -52,7 +52,7 @@ const paint = (text, rgb, bold) => {
   const on = `${bold ? `${ESC}1m` : ''}${ESC}38;2;${rgb.join(';')}m`
   return `${on}${text}${ESC}39m${bold ? `${ESC}22m` : ''}`
 }
-const pad = text => `${ESC}0m ${ESC}0m${text}${ESC}0m ${ESC}0m`
+const pad = text => `${ESC}0m${text}${ESC}0m`
 const visibleLength = s => [...s.replace(/\x1b\[[0-9;]*m/g, '')].length
 
 const git = (args, cwd) =>
@@ -100,11 +100,11 @@ const effortOf = input => {
 
 const contextOf = input => {
   const w = input.context_window
-  if (typeof w?.used_percentage === 'number') return pct(w.used_percentage)
+  if (typeof w?.used_percentage === 'number') return w.used_percentage
   const u = w?.current_usage
   if (u && w?.context_window_size > 0) {
     const used = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0)
-    return pct((used / w.context_window_size) * 100)
+    return (used / w.context_window_size) * 100
   }
 }
 
@@ -192,8 +192,12 @@ const widget = (w, input, limits) => {
     }
     case 'effort':
       return { text: effortOf(input) }
-    case 'context':
-      return { text: contextOf(input), rgb: w.color }
+    case 'context': {
+      // Same rule as the usage windows: hidden below the lowest step, coloured by step.
+      const used = contextOf(input)
+      const step = used !== undefined && stepFor(used)
+      return step ? { text: pct(used), rgb: step.rgb } : {}
+    }
     case 'branch':
       return { text: branchOf(input) }
     case 'weekly':
@@ -222,7 +226,8 @@ const render = (spec, input, limits) => {
       continue
     }
     const { text, rgb, bold } = widget(w, input, limits)
-    if (text) parts.push({ sep: false, text: pad(paint(text, rgb, bold)) })
+    // Two widgets in a row are one space apart; a separator brings its own spaces.
+    if (text) parts.push({ sep: false, text: (parts.length && !parts[parts.length - 1].sep ? ' ' : '') + pad(paint(text, rgb, bold)) })
   }
   while (parts.length && parts[parts.length - 1].sep) parts.pop()
   return parts.map(p => p.text).join('')
@@ -244,13 +249,11 @@ const truncate = (line, max) => {
 
 export const main = (input, snapshot = {}) => {
   const limits = limitsOf(input, snapshot)
-  // No padding space at the outer edges of the line, only between widgets.
-  const trimStart = s => s.replace(/^\x1b\[0m /, `${ESC}0m`)
-  const trimEnd = s => s.replace(/ \x1b\[0m$/, `${ESC}0m`)
-  let left = trimStart(render(LEFT, input, limits))
-  let right = trimEnd(render(RIGHT, input, limits))
-  if (!right) left = trimEnd(left)
-  if (!left) right = trimStart(right)
+  // One cell of margin on the left edge, none on the right (a cell is the smallest step).
+  let left = render(LEFT, input, limits)
+  let right = render(RIGHT, input, limits)
+  if (left) left = ` ${left}`
+  else if (right) right = ` ${right}`
   const width = Number(process.env.CCSTATUSLINE_WIDTH || process.env.COLUMNS) || 0
   let line
   if (!right) {

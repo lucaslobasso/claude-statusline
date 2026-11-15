@@ -3,14 +3,14 @@
 A Claude Code status line with one fixed layout and no config file. One Node file, no dependencies.
 
 ```
-Opus 5.5 medium | 12.0% | main                          41.0% 3d 4hr | 82.0% 1hr 20m
+Opus 5.5 – | 62.0% | main                          41.0% 3d 4hr | 82.0% 1hr 20m
 ```
 
 - **Left:** model + effort as an arrow (low `↓`, medium `–`, high `↑`, xhigh `↑+`, max `M`, auto `a`), context used,
   git branch (hidden outside a git repo).
-- **Right:** weekly and 5-hour usage with the time until each resets. Each one **only appears from 50%**
-  and its percentage changes colour as it fills: white from 50%, yellow from 65%, orange from 75%, red from 90%.
-  The reset time stays in the terminal's default colour.
+- **Context and usage:** context used, plus weekly and 5-hour usage with the time until each resets (on the right).
+  Each one **only appears from 50%** (with its separator) and its percentage changes colour as it fills:
+  white from 50%, yellow from 65%, orange from 75%, red from 90%. A reset time stays in the terminal's default colour.
 - Usage is also kept in `~/.claude/statusline/usage.json` (merged across sessions), so a fresh session
   shows it before its first reading.
 
