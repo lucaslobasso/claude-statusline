@@ -261,7 +261,7 @@ export const main = (input, snapshot = {}) => {
   } else if (!left) {
     line = right
   } else if (width > 0) {
-    const usable = width - 5
+    const usable = width // flush to the right edge: no reserved margin
     const gap = Math.max(0, usable - visibleLength(left) - visibleLength(right))
     line = left + ' '.repeat(gap) + right
     if (visibleLength(line) > usable) line = truncate(line, usable)
