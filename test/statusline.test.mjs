@@ -15,22 +15,31 @@ test('usage below 50% is hidden, with its reset', () => {
   assert.doesNotMatch(out, /\d+hr|\dm\b/)
 })
 
-test('colour steps: yellow 50, orange 75, bold red 90', () => {
+test('colour steps: white 50, yellow 65, orange 75, red 90, never bold', () => {
   assert.equal(stepFor(49.9), undefined)
-  assert.deepEqual(stepFor(50).rgb, [252, 233, 79])
+  assert.deepEqual(stepFor(50).rgb, [238, 238, 236])
+  assert.deepEqual(stepFor(64.9).rgb, [238, 238, 236])
+  assert.deepEqual(stepFor(65).rgb, [252, 233, 79])
   assert.deepEqual(stepFor(74.9).rgb, [252, 233, 79])
   assert.deepEqual(stepFor(75).rgb, [245, 160, 60])
+  assert.deepEqual(stepFor(89.9).rgb, [245, 160, 60])
   assert.deepEqual(stepFor(90).rgb, [239, 41, 41])
-  assert.equal(stepFor(90).bold, true)
   const out = line({ five_hour: win(95, 3600) })
-  assert.match(out, /\x1b\[1m\x1b\[38;2;239;41;41m/)
-  assert.match(strip(out), /95\.0%/)
+  assert.match(out, /38;2;239;41;41m95\.0%/)
+  assert.doesNotMatch(out, /\x1b\[1m/)
 })
 
 test('session and weekly are coloured independently', () => {
-  const out = line({ five_hour: win(80, 3600), seven_day: win(55, 86400) })
+  const out = line({ five_hour: win(80, 3600), seven_day: win(70, 86400) })
   assert.match(out, /38;2;245;160;60m[^\x1b]*80\.0%/)
-  assert.match(out, /38;2;252;233;79m[^\x1b]*55\.0%/)
+  assert.match(out, /38;2;252;233;79m[^\x1b]*70\.0%/)
+})
+
+test('only the percentage is coloured, the reset time is default', () => {
+  const out = line({ five_hour: win(80, 2 * 3600 + 600) })
+  assert.match(out, /38;2;245;160;60m80\.0%\x1b\[39m/)
+  assert.doesNotMatch(out, /38;2;[0-9;]*m[^\x1b]*\d+hr/)
+  assert.match(strip(out), /2hr/)
 })
 
 test('one visible window leaves no dangling separator', () => {

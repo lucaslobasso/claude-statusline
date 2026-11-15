@@ -8,7 +8,8 @@ Opus 5.5 medium | 12.0% | main                          41.0% 3d 4hr | 82.0% 1hr
 
 - **Left:** model + effort, context used, git branch.
 - **Right:** weekly and 5-hour usage with the time until each resets. Each one **only appears from 50%**
-  and changes colour as it fills: yellow from 50%, orange from 75%, bold red from 90%.
+  and its percentage changes colour as it fills: white from 50%, yellow from 65%, orange from 75%, red from 90%.
+  The reset time stays in the terminal's default colour.
 - Usage is also kept in `~/.claude/statusline/usage.json` (merged across sessions), so a fresh session
   shows it before its first reading.
 

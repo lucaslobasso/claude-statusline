@@ -5,8 +5,9 @@
 //
 //   model + effort | context | git branch            weekly % + reset | session % + reset
 //
-// The two usage segments only appear once that window passes 50%, and change colour as it
-// fills: yellow from 50%, orange from 75%, bold red from 90%. Edit the constants below to
+// The two usage segments only appear once that window passes 50%. The percentage changes
+// colour as it fills (white from 50%, yellow from 65%, orange from 75%, red from 90%); the
+// reset time next to it stays in the terminal's default colour. Edit the constants below to
 // change the look.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -21,9 +22,10 @@ const SEPARATOR = [85, 87, 83]
 
 // Usage colours, highest step first. A window below the lowest `from` is hidden.
 const STEPS = [
-  { from: 90, rgb: [239, 41, 41], bold: true }, // red
+  { from: 90, rgb: [239, 41, 41] }, // red
   { from: 75, rgb: [245, 160, 60] }, // orange
-  { from: 50, rgb: [252, 233, 79] }, // yellow
+  { from: 65, rgb: [252, 233, 79] }, // yellow
+  { from: 50, rgb: WHITE },
 ]
 
 // Left group, then the right group. `color` undefined = terminal default.
@@ -203,7 +205,7 @@ const widget = (w, input, limits) => {
     case 'sessionReset': {
       const win = limits[w.usage]
       const step = win && stepFor(win.used_percentage)
-      return step ? { text: countdown(win.resets_at), rgb: step.rgb, bold: step.bold } : {}
+      return step ? { text: countdown(win.resets_at) } : {} // default colour
     }
   }
   return {}
