@@ -15,6 +15,7 @@ const run = async (file: string | undefined, options: Record<string, unknown> = 
   let hook: Hook | undefined
   const on = (event: string, ...rest: any[]) => {
     if (event === 'session.start') hook = rest[rest.length - 1]
+    return { catch: () => undefined }
   }
   ;(register as any)(on, options)
   const state = { file, path: '', writes: 0, toasts: [] as string[] }
