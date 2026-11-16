@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 24
       - name: Status line tests
-        run: node --test test/
+        run: node --test "test/*.test.mjs"
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
       - name: Validate plugin and marketplace
