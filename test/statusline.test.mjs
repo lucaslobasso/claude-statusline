@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { main, pickWindow, stepFor } from '../statusline.mjs'
+import { DEFAULTS, main, parseFlags, pickWindow, stepFor } from '../statusline.mjs'
 
 const strip = s => s.replace(/\x1b\[[0-9;]*m/g, '').replace(/ /g, ' ')
 const now = () => Date.now() / 1000
@@ -106,4 +106,42 @@ test('no padding space at the outer edges, two spaces between widgets', () => {
   const leftOnly = plain(main({ ...base, context_window: { used_percentage: 70 } }))
   assert.match(leftOnly, /^Opus/)
   assert.match(leftOnly, /%$/)
+})
+
+test('no flags: the defaults', () => {
+  assert.deepEqual(parseFlags([]), DEFAULTS)
+})
+
+test('flags: numbers, booleans, and junk ignored', () => {
+  const o = parseFlags(['--usage-from=60', '--yellow-from=70', '--orange-from=80', '--red-from=95', '--no-branch', '--effort=false', '--resets', '--bogus=1', '--context=', 'x'])
+  assert.equal(o.usageFrom, 60)
+  assert.equal(o.yellowFrom, 70)
+  assert.equal(o.orangeFrom, 80)
+  assert.equal(o.redFrom, 95)
+  assert.equal(o.branch, false)
+  assert.equal(o.effort, false)
+  assert.equal(o.resets, true)
+  assert.equal(o.context, true)
+  assert.equal(parseFlags(['--usage-from=abc']).usageFrom, 50)
+  assert.equal(parseFlags(['--usage-from=500']).usageFrom, 100)
+})
+
+test('usageFrom moves the hidden threshold; steps follow the flags', () => {
+  const o = parseFlags(['--usage-from=0'])
+  assert.deepEqual(stepFor(10, o).rgb, [238, 238, 236])
+  assert.match(strip(main({ ...base, rate_limits: { five_hour: win(10, 3600) } }, {}, o)), /10\.0%/)
+  const late = parseFlags(['--usage-from=70', '--yellow-from=80', '--orange-from=85', '--red-from=95'])
+  assert.equal(stepFor(60, late), undefined)
+  assert.deepEqual(stepFor(75, late).rgb, [238, 238, 236])
+  assert.deepEqual(stepFor(86, late).rgb, [245, 160, 60])
+  assert.deepEqual(stepFor(94, late).rgb, [245, 160, 60])
+  assert.deepEqual(stepFor(95, late).rgb, [239, 41, 41])
+})
+
+test('hiding widgets: effort, context, branch, resets', () => {
+  const o = parseFlags(['--no-effort', '--no-context', '--no-resets', '--usage-from=0'])
+  const out = strip(main({ ...base, rate_limits: { five_hour: win(80, 3600) } }, {}, o))
+  assert.doesNotMatch(out, /–|12\.0%/)
+  assert.match(out, /80\.0%/)
+  assert.doesNotMatch(out, /\d+hr|\dm\b/)
 })

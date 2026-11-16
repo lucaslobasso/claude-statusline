@@ -8,8 +8,8 @@
 // The context % and the two usage segments only appear once they pass 50% (a hidden one takes
 // its separator with it). The percentage changes
 // colour as it fills (white from 50%, yellow from 65%, orange from 75%, red from 90%); the
-// reset time next to it stays in the terminal's default colour. Edit the constants below to
-// change the look.
+// reset time next to it stays in the terminal's default colour. The plugin passes its settings
+// as flags (--usage-from=60 --no-branch ...); with no flags you get the defaults below.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -20,12 +20,45 @@ import { fileURLToPath } from 'node:url'
 const WHITE = [238, 238, 236]
 const SEPARATOR = [85, 87, 83]
 
-// Usage colours, highest step first. A window below the lowest `from` is hidden.
-const STEPS = [
-  { from: 90, rgb: [239, 41, 41] }, // red
-  { from: 75, rgb: [245, 160, 60] }, // orange
-  { from: 65, rgb: [252, 233, 79] }, // yellow
-  { from: 50, rgb: WHITE },
+const RED = [239, 41, 41]
+const ORANGE = [245, 160, 60]
+const YELLOW = [252, 233, 79]
+
+// Settings, overridable with flags. Context and usage below `usageFrom` are hidden.
+export const DEFAULTS = {
+  usageFrom: 50,
+  yellowFrom: 65,
+  orangeFrom: 75,
+  redFrom: 90,
+  effort: true,
+  context: true,
+  branch: true,
+  resets: true,
+}
+
+// `--usage-from=60`, `--no-branch`, `--branch=false`: unknown or invalid flags are ignored.
+export const parseFlags = argv => {
+  const opts = { ...DEFAULTS }
+  for (const arg of argv) {
+    const hit = /^--(no-)?([a-z-]+)(?:=(.*))?$/.exec(arg)
+    if (!hit) continue
+    const key = hit[2].replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+    if (!(key in DEFAULTS)) continue
+    if (typeof DEFAULTS[key] === 'boolean') {
+      opts[key] = hit[1] ? false : hit[3] === undefined ? true : !/^(false|0|off|no)$/i.test(hit[3])
+    } else if (!hit[1] && hit[3] !== undefined && hit[3] !== '' && Number.isFinite(Number(hit[3]))) {
+      opts[key] = Math.min(100, Math.max(0, Number(hit[3])))
+    }
+  }
+  return opts
+}
+
+// Usage colours, highest step first. A value below `usageFrom` is hidden.
+const stepsOf = opts => [
+  { from: opts.redFrom, rgb: RED },
+  { from: opts.orangeFrom, rgb: ORANGE },
+  { from: opts.yellowFrom, rgb: YELLOW },
+  { from: opts.usageFrom, rgb: WHITE },
 ]
 
 // Left group, then the right group. `color` undefined = terminal default.
@@ -68,8 +101,9 @@ const countdown = epochSeconds => {
   return [d > 0 && `${d}d`, h > 0 && `${h}hr`, m > 0 && `${m}m`].filter(Boolean).join(' ') || '0m'
 }
 
-// The step a usage percentage falls in, or undefined when it is below the lowest one.
-export const stepFor = percent => STEPS.find(s => percent >= s.from)
+// The step a usage percentage falls in, or undefined when it is hidden.
+export const stepFor = (percent, opts = DEFAULTS) =>
+  percent >= opts.usageFrom ? stepsOf(opts).find(s => percent >= s.from) : undefined
 
 const configDir = () => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 
@@ -183,7 +217,7 @@ const saveSnapshot = (input, snapshot) => {
 
 // A widget's text and colour. Usage widgets return nothing below the lowest step, so the
 // widget (and any separator that only joined it) disappears.
-const widget = (w, input, limits) => {
+const widget = (w, input, limits, opts) => {
   switch (w.id) {
     case 'model': {
       const m = input.model
@@ -191,25 +225,25 @@ const widget = (w, input, limits) => {
       return { text: name ? name.replace(/\s*\(.*\)$/, '') : undefined, rgb: w.color }
     }
     case 'effort':
-      return { text: effortOf(input) }
+      return opts.effort ? { text: effortOf(input) } : {}
     case 'context': {
       // Same rule as the usage windows: hidden below the lowest step, coloured by step.
-      const used = contextOf(input)
-      const step = used !== undefined && stepFor(used)
+      const used = opts.context ? contextOf(input) : undefined
+      const step = used !== undefined && stepFor(used, opts)
       return step ? { text: pct(used), rgb: step.rgb } : {}
     }
     case 'branch':
-      return { text: branchOf(input) }
+      return opts.branch ? { text: branchOf(input) } : {}
     case 'weekly':
     case 'session': {
       const win = limits[w.usage]
-      const step = win && stepFor(win.used_percentage)
+      const step = win && stepFor(win.used_percentage, opts)
       return step ? { text: pct(win.used_percentage), rgb: step.rgb, bold: step.bold } : {}
     }
     case 'weeklyReset':
     case 'sessionReset': {
       const win = limits[w.usage]
-      const step = win && stepFor(win.used_percentage)
+      const step = opts.resets && win && stepFor(win.used_percentage, opts)
       return step ? { text: countdown(win.resets_at) } : {} // default colour
     }
   }
@@ -218,14 +252,14 @@ const widget = (w, input, limits) => {
 
 // One group of widgets: widgets with nothing to show vanish, and a separator needs content
 // before it and after it.
-const render = (spec, input, limits) => {
+const render = (spec, input, limits, opts) => {
   const parts = []
   for (const w of spec) {
     if (w.id === 'sep') {
       if (parts.length && parts[parts.length - 1].sep === false) parts.push({ sep: true, text: paint(' | ', SEPARATOR) })
       continue
     }
-    const { text, rgb, bold } = widget(w, input, limits)
+    const { text, rgb, bold } = widget(w, input, limits, opts)
     if (!text) continue
     // A tight widget sits one space from the widget before it: drop that one's trailing pad.
     const prev = parts[parts.length - 1]
@@ -250,13 +284,13 @@ const truncate = (line, max) => {
   return `${out}...`
 }
 
-export const main = (input, snapshot = {}) => {
+export const main = (input, snapshot = {}, opts = DEFAULTS) => {
   const limits = limitsOf(input, snapshot)
   // No padding space at the outer edges of the line, only between widgets.
   const trimStart = s => s.replace(/^\x1b\[0m /, `${ESC}0m`)
   const trimEnd = s => s.replace(/ \x1b\[0m$/, `${ESC}0m`)
-  let left = trimStart(render(LEFT, input, limits))
-  let right = trimEnd(render(RIGHT, input, limits))
+  let left = trimStart(render(LEFT, input, limits, opts))
+  let right = trimEnd(render(RIGHT, input, limits, opts))
   if (!right) left = trimEnd(left)
   if (!left) right = trimStart(right)
   const width = Number(process.env.CCSTATUSLINE_WIDTH || process.env.COLUMNS) || 0
@@ -288,7 +322,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       const input = JSON.parse(raw || '{}')
       const snapshot = readSnapshot()
       saveSnapshot(input, snapshot)
-      process.stdout.write(main(input, snapshot) + '\n')
+      process.stdout.write(main(input, snapshot, parseFlags(process.argv.slice(2))) + '\n')
     } catch {}
   })
 }
